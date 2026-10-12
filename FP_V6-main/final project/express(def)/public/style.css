@@ -1,0 +1,426 @@
+/* ============================================================
+   БАЗА
+   ============================================================ */
+
+*
+{
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body
+{
+    overflow: hidden;
+    display: flex;
+    justify-content: center;
+    background: #666666;
+}
+
+.function-container
+{
+    width: 100vh;
+    height: 100vh;
+    background: #444444;
+}
+
+/* ============================================================
+   ВЕРХНЯЯ ПАНЕЛЬ (СЧЕТА)
+   ============================================================ */
+
+.foot
+{
+    min-height: 100px;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 15px;
+}
+
+.foot hr
+{
+    width: 1px;
+    height: 40px;
+    background: white;
+}
+
+/* ============================================================
+   КАРТОЧКА
+   ============================================================ */
+
+.item
+{
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    width: 100px;
+}
+
+.circle
+{
+    height: 40px;
+    width: 40px;
+    border-radius: 50%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    box-sizing: border-box;
+    background: #666666;
+
+    /* --- для drag&drop --- */
+    cursor: grab;
+    touch-action: none;             /* чтобы тач не скроллил страницу */
+    user-select: none;
+    -webkit-user-select: none;
+    transition: transform .15s ease, box-shadow .15s ease, background .15s ease;
+}
+
+.circle:active
+{
+    cursor: grabbing;
+}
+
+.circle-icon
+{
+    width: 25px;
+    height: 25px;
+    pointer-events: none;           /* клик всегда попадает в .circle */
+    -webkit-user-drag: none;
+}
+
+.circle-value
+{
+    font-size: 15px;
+    color: white;
+    font-family: 'Lucida Sans', 'Lucida Sans Regular', 'Lucida Grande', 'Lucida Sans Unicode', Geneva, Verdana, sans-serif;
+    transition: color .2s ease;
+}
+
+.circle-name
+{
+    font-size: 15px;
+    color: white;
+    font-family: 'Lucida Sans', 'Lucida Sans Regular', 'Lucida Grande', 'Lucida Sans Unicode', Geneva, Verdana, sans-serif;
+    max-width: 80px;
+    text-align: center;
+}
+
+/* ============================================================
+   СРЕДНЯЯ ПАНЕЛЬ (КАТЕГОРИИ)
+   ============================================================ */
+
+.mid
+{
+    display: flex;
+    flex-wrap: wrap;
+    margin: 20px;
+    gap: 15px;
+}
+
+/* ============================================================
+   DRAG & DROP
+   ============================================================ */
+
+/* «Призрак» кружка, летящий за курсором */
+.drag-ghost
+{
+    position: fixed;
+    left: 0;
+    top: 0;
+    margin: 0;
+    pointer-events: none;           /* важно: иначе elementFromPoint найдёт его */
+    opacity: 0;
+    background: #666666;
+    border-radius: 50%;
+    z-index: 9999;
+    will-change: transform;         /* GPU-слой */
+    transition: none !important;    /* ← ключ против дрожания */
+    box-shadow:
+        0 12px 28px rgba(0, 0, 0, .55),
+        0 0 0 2px rgba(46, 204, 113, .55);
+}
+
+.drag-ghost.visible
+{
+    opacity: 1;
+}
+
+/* Исходный кружок, пока его тащат */
+.item.dragging .circle
+{
+    opacity: .35;
+    transform: scale(.9);
+}
+
+/* Кружок, на который навели — цель перевода */
+.item.drop-target .circle
+{
+    background: #2ecc71;
+    transform: scale(1.2);
+    box-shadow: 0 0 0 4px rgba(46, 204, 113, .35);
+}
+
+.item.drop-target .circle-value,
+.item.drop-target .circle-name
+{
+    color: #2ecc71;
+}
+
+/* Пульс после успешного перевода */
+.item.pulse .circle
+{
+    animation: pulse .45s ease;
+}
+
+@keyframes pulse
+{
+    0%   { transform: scale(1);   box-shadow: 0 0 0 0 rgba(46, 204, 113, .6); }
+    50%  { transform: scale(1.3); box-shadow: 0 0 0 10px rgba(46, 204, 113, 0); }
+    100% { transform: scale(1);   box-shadow: 0 0 0 0 rgba(46, 204, 113, 0); }
+}
+
+/* Пока тащим — запрещаем выделение текста во всём документе */
+body.dragging
+{
+    user-select: none;
+    -webkit-user-select: none;
+    cursor: grabbing;
+}
+
+/* ============================================================
+   TOAST
+   ============================================================ */
+
+.toast
+{
+    position: fixed;
+    top: 18px;
+    left: 50%;
+    transform: translate(-50%, -20px);
+    padding: 10px 18px;
+    border-radius: 10px;
+    background: #2ecc71;
+    color: #123;
+    font-family: 'Lucida Sans', Geneva, Verdana, sans-serif;
+    font-size: 14px;
+    font-weight: 600;
+    box-shadow: 0 8px 20px rgba(0, 0, 0, .35);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity .2s ease, transform .2s ease;
+    z-index: 10000;
+}
+
+.toast.show
+{
+    opacity: 1;
+    transform: translate(-50%, 0);
+}
+
+.toast.error
+{
+    background: #e74c3c;
+    color: #fff;
+}
+
+/* ============================================================
+   МОДАЛЬНОЕ ОКНО ПЕРЕВОДА
+   ============================================================ */
+
+.transfer-backdrop
+{
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, .6);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 10001;
+    opacity: 0;
+    transition: opacity .2s ease;
+    font-family: 'Lucida Sans', Geneva, Verdana, sans-serif;
+}
+
+.transfer-backdrop.show
+{
+    opacity: 1;
+}
+
+.transfer-modal
+{
+    background: #2b2b2b;
+    color: #fff;
+    border-radius: 14px;
+    padding: 22px 24px;
+    min-width: 300px;
+    max-width: 340px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, .5);
+    transform: translateY(-10px) scale(.96);
+    transition: transform .2s ease;
+}
+
+.transfer-backdrop.show .transfer-modal
+{
+    transform: translateY(0) scale(1);
+}
+
+.transfer-modal h3
+{
+    font-size: 18px;
+    margin-bottom: 10px;
+}
+
+.transfer-modal .route
+{
+    font-size: 14px;
+    margin-bottom: 6px;
+}
+
+.transfer-modal .route b
+{
+    color: #2ecc71;
+}
+
+.transfer-modal .hint
+{
+    font-size: 12px;
+    opacity: .7;
+    margin-bottom: 12px;
+}
+
+.transfer-modal input
+{
+    width: 100%;
+    padding: 10px 12px;
+    border-radius: 8px;
+    border: 1px solid #555;
+    background: #1e1e1e;
+    color: #fff;
+    font-size: 16px;
+    font-family: inherit;
+    outline: none;
+    margin-bottom: 10px;
+}
+
+.transfer-modal input:focus
+{
+    border-color: #2ecc71;
+}
+
+.transfer-modal .quick
+{
+    display: flex;
+    gap: 8px;
+    margin-bottom: 16px;
+}
+
+.transfer-modal .quick button
+{
+    flex: 1;
+    padding: 6px 0;
+    border-radius: 6px;
+    border: 1px solid #555;
+    background: transparent;
+    color: #ddd;
+    font-family: inherit;
+    font-size: 12px;
+    cursor: pointer;
+    transition: background .15s, border-color .15s;
+}
+
+.transfer-modal .quick button:hover
+{
+    background: #3a3a3a;
+    border-color: #2ecc71;
+}
+
+.transfer-modal .actions
+{
+    display: flex;
+    gap: 8px;
+    justify-content: flex-end;
+}
+
+.transfer-modal .actions button
+{
+    padding: 8px 16px;
+    border-radius: 8px;
+    border: none;
+    font-family: inherit;
+    font-size: 14px;
+    cursor: pointer;
+    transition: background .15s;
+}
+
+.transfer-modal .cancel
+{
+    background: #444;
+    color: #ddd;
+}
+
+.transfer-modal .cancel:hover
+{
+    background: #555;
+}
+
+.transfer-modal .confirm
+{
+    background: #2ecc71;
+    color: #123;
+    font-weight: 600;
+}
+
+.transfer-modal .confirm:hover
+{
+    background: #27ae60;
+}
+
+/* ============================================================
+   ФУТЕР
+   ============================================================ */
+
+.footer
+{
+    border: solid 1px red;
+    position: absolute;
+    bottom: 0;
+    height: 110px;
+    width: 100vh;
+}
+
+.PANELLogIn
+{
+    border: solid 1px red;
+    width: 300px;
+    height: 110px;
+    display: flex;
+    justify-content: center;
+    flex-direction: column;
+    color: white;
+    font-family: 'Lucida Sans', 'Lucida Sans Regular', 'Lucida Grande', 'Lucida Sans Unicode', Geneva, Verdana, sans-serif;
+    font-size: large;
+}
+
+.ICONLogIn
+{
+    width: 48px;
+    background: #666666;
+    border-radius: 50%;
+}
+
+.csrt
+{
+    display: flex;
+    justify-content: center;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
+}
+
+.csrt p
+{
+    margin: 0;
+}
